@@ -1,0 +1,72 @@
+name: Atualizar dashboard
+
+on:
+  schedule:
+    # 10:00 UTC = 07:00 em Brasília, todos os dias
+    - cron: '0 10 * * *'
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-e-publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Buscar dados no Active Campaign
+        run: node scripts/fetch-data.js
+        env:
+          AC_BASE_URL: ${{ secrets.AC_BASE_URL }}
+          AC_API_KEY: ${{ secrets.AC_API_KEY }}
+
+      - name: Montar o dashboard
+        run: node scripts/build.js
+
+      - name: Proteger com senha (criptografia)
+        run: |
+          if [ -z "$DASHBOARD_PASSWORD" ]; then
+            echo "ERRO: o secret DASHBOARD_PASSWORD não está configurado." >&2
+            exit 1
+          fi
+          npx --yes staticrypt@3 dist/index.html -d out --short \
+            -p "$DASHBOARD_PASSWORD" \
+            --remember 30 \
+            --template-title "Captação L14 — Etek Academy" \
+            --template-instructions "Digite a senha para acessar o dashboard." \
+            --template-button "Entrar" \
+            --template-placeholder "Senha" \
+            --template-color-primary "#3987e5" \
+            --template-color-secondary "#0e1229"
+        env:
+          DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Enviar página
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+      - name: Publicar
+        id: deployment
+        uses: actions/deploy-pages@v4
