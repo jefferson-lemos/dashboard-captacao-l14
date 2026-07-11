@@ -1,0 +1,10 @@
+{
+  "name": "dashboard-captacao-l14",
+  "private": true,
+  "description": "Dashboard de captação do lançamento L14 — Etek Academy",
+  "scripts": {
+    "fetch": "node scripts/fetch-data.js",
+    "build": "node scripts/build.js",
+    "dev": "node scripts/fetch-data.js && node scripts/build.js"
+  }
+}

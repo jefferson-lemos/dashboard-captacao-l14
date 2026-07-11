@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Captação L14 — Etek Academy</title>
+<style>
+  :root {
+    --page: #0e1229;
+    --surface: #181f42;
+    --surface-2: #1f2750;
+    --border: rgba(255,255,255,0.08);
+    --ink: #ffffff;
+    --ink-2: #c5cae4;
+    --muted: #8b92b8;
+    --grid: #232b52;
+    --baseline: #333b66;
+    --accent: #3987e5;
+    --accent-track: #223464;
+    --orange: #eb6834;
+    --good: #0ca30c;
+    --s1: #3987e5; --s2: #199e70; --s3: #c98500; --s4: #9085e9; --s5: #e66767; --s6: #d95926;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 20px clamp(12px, 3vw, 36px) 48px;
+  }
+  a { color: var(--accent); }
+
+  header.top {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding-bottom: 16px;
+  }
+  header.top img.logo { height: 52px; border-radius: 12px; display: block; }
+  header.top .titles h1 { font-size: 20px; font-weight: 650; letter-spacing: .2px; }
+  header.top .titles p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  header.top .meta { margin-left: auto; text-align: right; font-size: 12px; color: var(--muted); }
+  .badge-sample {
+    display: inline-block; margin-top: 4px; padding: 3px 8px; border-radius: 6px;
+    background: rgba(235,104,52,.15); color: #f0956c; border: 1px solid rgba(235,104,52,.4);
+    font-size: 11px; font-weight: 600; letter-spacing: .4px;
+  }
+
+  nav.tabs { display: flex; gap: 6px; margin: 8px 0 20px; border-bottom: 1px solid var(--border); }
+  nav.tabs button {
+    appearance: none; background: none; border: none; color: var(--muted);
+    font: inherit; font-size: 14px; font-weight: 600; padding: 10px 14px; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  nav.tabs button:hover { color: var(--ink-2); }
+  nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--orange); }
+
+  .grid { display: grid; gap: 14px; }
+  .grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .grid.tiles { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  @media (max-width: 760px) { .grid.cols-2 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 18px;
+  }
+  .card h2 { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+  .card .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .card-head { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
+  .card-head .spacer { flex: 1; }
+  .btn-table {
+    appearance: none; background: none; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--muted); font-size: 11px; font-weight: 600; padding: 4px 9px; cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-table:hover { color: var(--ink-2); border-color: rgba(255,255,255,.2); }
+
+  /* Herói + medidor */
+  .hero { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+  .hero .num { font-size: 52px; font-weight: 700; line-height: 1; }
+  .hero .lbl { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .hero .meterwrap { flex: 1; min-width: 220px; }
+  .meter { height: 10px; border-radius: 999px; background: var(--accent-track); overflow: hidden; }
+  .meter > div { height: 100%; border-radius: 999px; background: var(--accent); }
+  .meter-legend { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .meter-legend strong { color: var(--ink-2); font-weight: 600; }
+
+  .tile .lbl { font-size: 12px; color: var(--muted); }
+  .tile .val { font-size: 24px; font-weight: 650; margin-top: 4px; }
+  .tile .delta { font-size: 12px; margin-top: 2px; color: var(--muted); }
+  .tile .delta.up { color: var(--good); }
+  .tile .delta.down { color: #e66767; }
+
+  /* Gráficos */
+  .chartwrap { overflow-x: auto; }
+  .chartwrap svg { display: block; width: 100%; height: auto; min-width: 560px; }
+  .hbars .chartwrap svg { min-width: 0; }
+  svg text { font-family: inherit; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .legend i.line { height: 0; border-top: 2.5px solid; border-radius: 0; width: 14px; }
+  .legend i.dash { height: 0; border-top: 2.5px dashed; border-radius: 0; width: 14px; }
+
+  .hint { font-size: 12.5px; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
+
+  table.data { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.data th { text-align: left; color: var(--muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; padding: 6px 8px; border-bottom: 1px solid var(--baseline); }
+  table.data td { padding: 6px 8px; border-bottom: 1px solid var(--grid); color: var(--ink-2); }
+  table.data td.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+  table.data th.num { text-align: right; }
+
+  #tooltip {
+    position: fixed; z-index: 50; pointer-events: none; display: none;
+    background: #232b52; border: 1px solid rgba(255,255,255,.14); border-radius: 10px;
+    padding: 9px 11px; font-size: 12.5px; min-width: 150px; max-width: 280px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  }
+  #tooltip .tt-title { color: var(--muted); font-size: 11.5px; margin-bottom: 5px; }
+  #tooltip .row { display: flex; align-items: center; gap: 7px; margin-top: 3px; }
+  #tooltip .row i { width: 12px; border-top: 2.5px solid; display: inline-block; }
+  #tooltip .row .v { font-weight: 650; color: var(--ink); margin-left: auto; font-variant-numeric: tabular-nums; }
+  #tooltip .row .n { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  footer { margin-top: 28px; font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+  section[hidden] { display: none; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <img class="logo" src="__LOGO_DATA_URI__" alt="Etek Academy">
+  <div class="titles">
+    <h1>Captação L14 · Imersão IA</h1>
+    <p>Etek Academy — Overview dos Leads | Active Campaign</p>
+  </div>
+  <div class="meta">
+    <div id="updated-at"></div>
+    <div id="sample-badge"></div>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Páginas do dashboard">
+  <button role="tab" aria-selected="true" data-tab="geral">Geral</button>
+  <button role="tab" aria-selected="false" data-tab="origem">Origem (UTMs)</button>
+  <button role="tab" aria-selected="false" data-tab="pesquisa">Pesquisa</button>
+</nav>
+
+<section id="tab-geral">
+  <div class="grid" style="gap:14px">
+    <div class="card">
+      <div class="hero">
+        <div>
+          <div class="lbl">Total de leads captados</div>
+          <div class="num" id="hero-total">–</div>
+        </div>
+        <div class="meterwrap">
+          <div class="meter" role="img" id="meter" aria-label=""><div id="meter-fill" style="width:0%"></div></div>
+          <div class="meter-legend">
+            <span><strong id="meter-pct">–</strong> da meta</span>
+            <span>Meta: <strong id="meter-goal">–</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid tiles" id="tiles"></div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Captação por dia</h2>
+          <div class="sub" id="daily-sub"></div>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn-table" data-toggle="daily">Ver tabela</button>
+      </div>
+      <div id="chart-daily"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Acumulado vs. ritmo da meta</h2>
+          <div class="sub">Quanto já captamos e o ritmo linear necessário para chegar à meta</div>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn-table" data-toggle="cume">Ver tabela</button>
+      </div>
+      <div id="chart-cume"></div>
+    </div>
+  </div>
+</section>
+
+<section id="tab-origem" hidden>
+  <div id="utm-hint"></div>
+  <div class="grid cols-2" id="utm-grid" style="margin-top:4px"></div>
+</section>
+
+<section id="tab-pesquisa" hidden>
+  <div class="grid tiles" id="survey-tiles"></div>
+  <div class="grid cols-2" id="survey-grid" style="margin-top:14px"></div>
+</section>
+
+<div id="tooltip" role="status"></div>
+
+<footer>
+  <span>Fonte: Active Campaign · tag <code id="foot-tag"></code></span>
+  <span>·</span>
+  <span>Período: <span id="foot-period"></span></span>
+  <span>·</span>
+  <span>Atualização automática diária</span>
+</footer>
+
+<script>
+const DATA = /*__DATA_JSON__*/ null;
+
+// ---------- utilidades ----------
+const fmt = new Intl.NumberFormat('pt-BR');
+const fmtPct = (x) => (x * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+const $ = (sel) => document.querySelector(sel);
+const SVG = 'http://www.w3.org/2000/svg';
+const CAT = ['#3987e5', '#199e70', '#c98500', '#9085e9', '#e66767', '#d95926'];
+const RAMP = ['#b7d3f6', '#86b6ef', '#5598e7', '#2a78d6', '#1c5cab'];
+const MUTED = '#8b92b8', GRID = '#232b52', BASE = '#333b66', INK2 = '#c5cae4', INK = '#ffffff';
+
+function el(tag, attrs, parent) {
+  const isSvg = ['svg','g','rect','path','line','text','circle','polyline'].includes(tag);
+  const node = isSvg ? document.createElementNS(SVG, tag) : document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === 'text') node.textContent = v;
+    else node.setAttribute(k, v);
+  }
+  if (parent) parent.appendChild(node);
+  return node;
+}
+function dayLabel(iso) { return iso.slice(8, 10) + '/' + iso.slice(5, 7); }
+function niceMax(v) {
+  if (v <= 0) return 10;
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p;
+  return 10 * p;
+}
+
+// ---------- tooltip ----------
+const tt = $('#tooltip');
+function showTip(evt, title, rows) {
+  tt.textContent = '';
+  el('div', { class: 'tt-title', text: title }, tt);
+  for (const r of rows) {
+    const row = el('div', { class: 'row' }, tt);
+    const key = el('i', {}, row);
+    key.style.borderTopColor = r.color || 'transparent';
+    if (!r.color) key.style.display = 'none';
+    el('span', { class: 'n', text: r.name }, row);
+    el('span', { class: 'v', text: r.value }, row);
+  }
+  tt.style.display = 'block';
+  moveTip(evt);
+}
+function moveTip(evt) {
+  const pad = 14;
+  let x = evt.clientX + pad, y = evt.clientY + pad;
+  const r = tt.getBoundingClientRect();
+  if (x + r.width > window.innerWidth - 8) x = evt.clientX - r.width - pad;
+  if (y + r.height > window.innerHeight - 8) y = evt.clientY - r.height - pad;
+  tt.style.left = x + 'px'; tt.style.top = y + 'px';
+}
+function hideTip() { tt.style.display = 'none'; }
+
+// ---------- estado geral ----------
+const days = DATA.byDay.map((d) => d.date);
+const todaySP = DATA.updatedAt.slice(0, 10);
+// dias decorridos: pela data de hoje OU pelo último dia que já tem leads (o que for maior)
+let lastWithData = -1;
+DATA.byDay.forEach((d, i) => { if (d.total > 0) lastWithData = i; });
+const byDate = days.filter((d) => d <= todaySP).length;
+const elapsed = Math.max(byDate, lastWithData + 1);
+const started = elapsed > 0;
+const remaining = days.length - elapsed;
+const totalInWindow = DATA.byDay.reduce((s, d) => s + d.total, 0);
+
+// ---------- cabeçalho ----------
+{
+  const d = new Date(DATA.updatedAt);
+  $('#updated-at').textContent = 'Atualizado em ' + d.toLocaleDateString('pt-BR') + ' às ' +
+    d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  if (DATA.sampleData) {
+    el('span', { class: 'badge-sample', text: 'DADOS DE EXEMPLO' }, $('#sample-badge'));
+  }
+  $('#foot-tag').textContent = DATA.config.tagName;
+  $('#foot-period').textContent = dayLabel(DATA.config.start) + ' a ' + dayLabel(DATA.config.end) + '/2026';
+}
+
+// ---------- abas ----------
+document.querySelectorAll('nav.tabs button').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('nav.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
+    for (const name of ['geral', 'origem', 'pesquisa']) {
+      document.getElementById('tab-' + name).hidden = name !== btn.dataset.tab;
+    }
+  });
+});
+
+// ---------- herói + medidor ----------
+{
+  const goal = DATA.config.goal;
+  const pct = Math.min(1, DATA.total / goal);
+  $('#hero-total').textContent = fmt.format(DATA.total);
+  $('#meter-fill').style.width = (pct * 100).toFixed(2) + '%';
+  $('#meter-pct').textContent = fmtPct(DATA.total / goal);
+  $('#meter-goal').textContent = fmt.format(goal);
+  $('#meter').setAttribute('aria-label',
+    fmt.format(DATA.total) + ' de ' + fmt.format(goal) + ' leads (' + fmtPct(DATA.total / goal) + ' da meta)');
+}
+
+// ---------- cartões de estatísticas ----------
+{
+  const tiles = $('#tiles');
+  const goal = DATA.config.goal;
+  const media = elapsed > 0 ? totalInWindow / elapsed : 0;
+  const necessario = remaining > 0 ? Math.max(0, goal - DATA.total) / remaining : 0;
+  const last7 = DATA.byDay.slice(Math.max(0, elapsed - 7), elapsed);
+  const media7 = last7.length ? last7.reduce((s, d) => s + d.total, 0) / last7.length : 0;
+  const projecao = DATA.total + media7 * remaining;
+  const ontem = elapsed >= 2 ? DATA.byDay[elapsed - 2].total : null;
+  const anteontem = elapsed >= 3 ? DATA.byDay[elapsed - 3].total : null;
+
+  function tile(lbl, val, deltaText, deltaDir) {
+    const c = el('div', { class: 'card tile' }, tiles);
+    el('div', { class: 'lbl', text: lbl }, c);
+    el('div', { class: 'val', text: val }, c);
+    if (deltaText) el('div', { class: 'delta ' + (deltaDir || ''), text: deltaText }, c);
+  }
+
+  if (!started) {
+    tile('Status', 'Aguardando início', 'Captação começa em ' + dayLabel(DATA.config.start));
+    tile('Dias de captação', String(days.length));
+    tile('Meta de leads', fmt.format(goal));
+    tile('Necessário por dia', fmt.format(Math.round(goal / days.length)));
+  } else {
+    tile('Dias restantes', fmt.format(remaining), elapsed + ' de ' + days.length + ' dias concluídos');
+    tile('Média por dia', fmt.format(Math.round(media)));
+    tile('Necessário por dia', fmt.format(Math.round(necessario)), 'para bater a meta');
+    tile('Projeção no ritmo atual', fmt.format(Math.round(projecao)), 'média dos últimos 7 dias', projecao >= goal ? 'up' : 'down');
+    if (ontem !== null) {
+      let dtxt = '', dir = '';
+      if (anteontem !== null && anteontem > 0) {
+        const diff = (ontem - anteontem) / anteontem;
+        dtxt = (diff >= 0 ? '+' : '') + fmtPct(diff) + ' vs. dia anterior';
+        dir = diff >= 0 ? 'up' : 'down';
+      }
+      tile('Leads ontem', fmt.format(ontem), dtxt, dir);
+    }
+  }
+}
+
+// ---------- gráfico: colunas empilhadas por dia ----------
+function renderDaily() {
+  const host = $('#chart-daily');
+  host.textContent = '';
+  const series = DATA.stackSeries.filter((s) => DATA.byDay.some((d) => (d.bySource[s] || 0) > 0));
+  const colors = {};
+  series.forEach((s, i) => { colors[s] = CAT[i % CAT.length]; });
+
+  $('#daily-sub').textContent = series.length > 1 ? 'Leads por dia, divididos por utm_source' : 'Leads por dia';
+
+  const wrap = el('div', { class: 'chartwrap' }, host);
+  const W = 760, H = 290, mL = 46, mR = 10, mT = 12, mB = 30;
+  const pw = W - mL - mR, ph = H - mT - mB;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Gráfico de colunas: leads captados por dia' }, wrap);
+
+  const maxV = niceMax(Math.max(1, ...DATA.byDay.map((d) => d.total)));
+  const y = (v) => mT + ph - (v / maxV) * ph;
+  const n = DATA.byDay.length;
+  const slot = pw / n;
+  const barW = Math.min(24, slot * 0.6);
+
+  for (let g = 0; g <= 4; g++) {
+    const vy = mT + (ph * g) / 4;
+    el('line', { x1: mL, x2: W - mR, y1: vy, y2: vy, stroke: g === 4 ? BASE : GRID, 'stroke-width': 1 }, svg);
+    el('text', { x: mL - 8, y: vy + 3.5, 'text-anchor': 'end', 'font-size': 10, fill: MUTED,
+      text: fmt.format(Math.round(maxV * (1 - g / 4))) }, svg);
+  }
+
+  DATA.byDay.forEach((d, i) => {
+    const cx = mL + slot * i + slot / 2;
+    let cursor = mT + ph;
+    const segs = series.map((s) => [s, d.bySource[s] || 0]).filter(([, v]) => v > 0);
+    segs.forEach(([s, v], k) => {
+      const hpx = (v / maxV) * ph;
+      const gap = k > 0 ? 2 : 0;
+      const top = cursor - hpx;
+      const isTopmost = k === segs.length - 1;
+      const hDraw = Math.max(0.5, hpx - gap);
+      const x0 = cx - barW / 2, y0 = top, w = barW, h = hDraw;
+      let dPath;
+      if (isTopmost && h >= 4) {
+        const r = 4;
+        dPath = `M ${x0} ${y0 + h} V ${y0 + r} Q ${x0} ${y0} ${x0 + r} ${y0} H ${x0 + w - r} Q ${x0 + w} ${y0} ${x0 + w} ${y0 + r} V ${y0 + h} Z`;
+      } else {
+        dPath = `M ${x0} ${y0} H ${x0 + w} V ${y0 + h} H ${x0} Z`;
+      }
+      el('path', { d: dPath, fill: colors[s] }, svg);
+      cursor = top;
+    });
+    if (i % Math.ceil(n / 11) === 0 || i === n - 1) {
+      el('text', { x: cx, y: H - 8, 'text-anchor': 'middle', 'font-size': 10, fill: MUTED, text: dayLabel(d.date) }, svg);
+    }
+    // alvo de interação: a coluna inteira
+    const hit = el('rect', { x: mL + slot * i, y: mT, width: slot, height: ph, fill: 'transparent', tabindex: 0 }, svg);
+    const onShow = (evt) => {
+      const rows = segs.slice().reverse().map(([s, v]) => ({ name: s, value: fmt.format(v), color: colors[s] }));
+      rows.push({ name: 'Total', value: fmt.format(d.total) });
+      const p = evt.clientX !== undefined ? evt : { clientX: hit.getBoundingClientRect().x, clientY: hit.getBoundingClientRect().y };
+      showTip(p, dayLabel(d.date) + '/2026', rows);
+    };
+    hit.addEventListener('pointermove', onShow);
+    hit.addEventListener('focus', onShow);
+    hit.addEventListener('pointerleave', hideTip);
+    hit.addEventListener('blur', hideTip);
+  });
+
+  if (series.length > 1) {
+    const lg = el('div', { class: 'legend' }, host);
+    series.forEach((s) => {
+      const item = el('span', {}, lg);
+      const sw = el('i', {}, item); sw.style.background = colors[s];
+      item.appendChild(document.createTextNode(s));
+    });
+  }
+}
+
+// ---------- gráfico: acumulado vs meta ----------
+function renderCume() {
+  const host = $('#chart-cume');
+  host.textContent = '';
+  const goal = DATA.config.goal;
+  const n = days.length;
+  let acc = 0;
+  const cume = DATA.byDay.map((d) => (acc += d.total));
+  const drawN = started ? elapsed : 0;
+
+  const wrap = el('div', { class: 'chartwrap' }, host);
+  const W = 760, H = 290, mL = 54, mR = 14, mT = 14, mB = 30;
+  const pw = W - mL - mR, ph = H - mT - mB;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Gráfico de linha: leads acumulados versus ritmo da meta' }, wrap);
+
+  const maxV = niceMax(Math.max(goal, cume[n - 1] || 0));
+  const x = (i) => mL + (i / (n - 1)) * pw;
+  const y = (v) => mT + ph - (v / maxV) * ph;
+
+  for (let g = 0; g <= 4; g++) {
+    const vy = mT + (ph * g) / 4;
+    el('line', { x1: mL, x2: W - mR, y1: vy, y2: vy, stroke: g === 4 ? BASE : GRID, 'stroke-width': 1 }, svg);
+    el('text', { x: mL - 8, y: vy + 3.5, 'text-anchor': 'end', 'font-size': 10, fill: MUTED,
+      text: fmt.format(Math.round(maxV * (1 - g / 4))) }, svg);
+  }
+  days.forEach((d, i) => {
+    if (i % Math.ceil(n / 8) === 0 || i === n - 1) {
+      el('text', { x: x(i), y: H - 8, 'text-anchor': 'middle', 'font-size': 10, fill: MUTED, text: dayLabel(d) }, svg);
+    }
+  });
+
+  const pace = days.map((_, i) => (goal * (i + 1)) / n);
+  el('polyline', {
+    points: days.map((_, i) => `${x(i)},${y(pace[i])}`).join(' '),
+    fill: 'none', stroke: MUTED, 'stroke-width': 2, 'stroke-dasharray': '5 5', 'stroke-linecap': 'round',
+  }, svg);
+
+  if (drawN > 0) {
+    const pts = [];
+    for (let i = 0; i < drawN; i++) pts.push(`${x(i)},${y(cume[i])}`);
+    el('path', {
+      d: `M ${x(0)} ${y(0)} L ${pts.join(' L ')} L ${x(drawN - 1)} ${mT + ph} Z`.replace('L M', 'L'),
+      fill: '#3987e5', opacity: 0.1, stroke: 'none',
+    }, svg);
+    el('polyline', { points: pts.join(' '), fill: 'none', stroke: '#3987e5', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+    const ex = x(drawN - 1), ey = y(cume[drawN - 1]);
+    el('circle', { cx: ex, cy: ey, r: 6, fill: 'var(--surface)' }, svg);
+    el('circle', { cx: ex, cy: ey, r: 4, fill: '#3987e5' }, svg);
+    el('text', { x: Math.min(ex + 8, W - mR - 4), y: Math.max(ey - 8, 12), 'font-size': 11.5, 'font-weight': 650, fill: INK,
+      'text-anchor': ex > W - 90 ? 'end' : 'start', text: fmt.format(cume[drawN - 1]) }, svg);
+  }
+
+  // interação: linha-guia vertical
+  const cross = el('line', { x1: 0, x2: 0, y1: mT, y2: mT + ph, stroke: 'rgba(255,255,255,.25)', 'stroke-width': 1, visibility: 'hidden' }, svg);
+  const overlay = el('rect', { x: mL, y: mT, width: pw, height: ph, fill: 'transparent' }, svg);
+  overlay.addEventListener('pointermove', (evt) => {
+    const box = svg.getBoundingClientRect();
+    const px = ((evt.clientX - box.left) / box.width) * W;
+    let i = Math.round(((px - mL) / pw) * (n - 1));
+    i = Math.max(0, Math.min(n - 1, i));
+    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i));
+    cross.setAttribute('visibility', 'visible');
+    const rows = [];
+    if (i < drawN) rows.push({ name: 'Acumulado', value: fmt.format(cume[i]), color: '#3987e5' });
+    rows.push({ name: 'Ritmo da meta', value: fmt.format(Math.round(pace[i])), color: MUTED });
+    showTip(evt, dayLabel(days[i]) + '/2026', rows);
+  });
+  overlay.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); hideTip(); });
+
+  const lg = el('div', { class: 'legend' }, host);
+  const a = el('span', {}, lg); const ai = el('i', { class: 'line' }, a); ai.style.borderTopColor = '#3987e5';
+  a.appendChild(document.createTextNode('Acumulado real'));
+  const b = el('span', {}, lg); const bi = el('i', { class: 'dash' }, b); bi.style.borderTopColor = MUTED;
+  b.appendChild(document.createTextNode('Ritmo necessário para a meta'));
+}
+
+// ---------- gráfico: barras horizontais ----------
+function renderHBars(host, entries, { ramp = false } = {}) {
+  host.textContent = '';
+  const totalAll = entries.reduce((s, [, v]) => s + v, 0);
+  if (!entries.length || totalAll === 0) {
+    el('div', { class: 'hint', text: 'Sem dados até o momento.' }, host);
+    return;
+  }
+  const wrap = el('div', { class: 'chartwrap' }, host);
+  const rowH = 30, mL = 8, mT = 4;
+  const W = 640;
+  const labelW = 210, valueW = 62;
+  const barMax = W - mL - labelW - valueW - 16;
+  const H = mT + entries.length * rowH + 4;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img' }, wrap);
+  const maxV = Math.max(...entries.map(([, v]) => v));
+
+  entries.forEach(([name, v], i) => {
+    const cy = mT + i * rowH + rowH / 2;
+    const bw = Math.max(2, (v / maxV) * barMax);
+    const color = ramp ? RAMP[Math.min(RAMP.length - 1, Math.floor((i / Math.max(1, entries.length - 1)) * (RAMP.length - 1)))] : CAT[0];
+    const label = el('text', { x: mL, y: cy + 3.5, 'font-size': 12, fill: INK2 }, svg);
+    label.textContent = name.length > 34 ? name.slice(0, 33) + '…' : name;
+    const x0 = mL + labelW, y0 = cy - 8, h = 16, r = 4;
+    el('path', {
+      d: `M ${x0} ${y0} H ${x0 + bw - r} Q ${x0 + bw} ${y0} ${x0 + bw} ${y0 + r} V ${y0 + h - r} Q ${x0 + bw} ${y0 + h} ${x0 + bw - r} ${y0 + h} H ${x0} Z`,
+      fill: color,
+    }, svg);
+    el('text', { x: x0 + bw + 8, y: cy + 3.5, 'font-size': 12, 'font-weight': 650, fill: INK, text: fmt.format(v) }, svg);
+    const hit = el('rect', { x: 0, y: mT + i * rowH, width: W, height: rowH, fill: 'transparent', tabindex: 0 }, svg);
+    const onShow = (evt) => {
+      const p = evt.clientX !== undefined ? evt : { clientX: hit.getBoundingClientRect().x + 40, clientY: hit.getBoundingClientRect().y };
+      showTip(p, name, [
+        { name: 'Leads', value: fmt.format(v), color },
+        { name: '% do total', value: fmtPct(v / totalAll) },
+      ]);
+    };
+    hit.addEventListener('pointermove', onShow);
+    hit.addEventListener('focus', onShow);
+    hit.addEventListener('pointerleave', hideTip);
+    hit.addEventListener('blur', hideTip);
+  });
+}
+
+// ---------- tabelas ----------
+function renderTable(host, header, rows) {
+  host.textContent = '';
+  const t = el('table', { class: 'data' }, host);
+  const trh = el('tr', {}, el('thead', {}, t));
+  header.forEach((h, i) => el('th', { class: i > 0 ? 'num' : '', text: h }, trh));
+  const tb = el('tbody', {}, t);
+  rows.forEach((r) => {
+    const tr = el('tr', {}, tb);
+    r.forEach((cell, i) => el('td', { class: i > 0 ? 'num' : '', text: String(cell) }, tr));
+  });
+}
+
+// ---------- cartão genérico com alternador gráfico/tabela ----------
+function chartCard(parentSel, title, sub, entries, opts = {}) {
+  const parent = typeof parentSel === 'string' ? $(parentSel) : parentSel;
+  const card = el('div', { class: 'card hbars' }, parent);
+  const head = el('div', { class: 'card-head' }, card);
+  const tdiv = el('div', {}, head);
+  el('h2', { text: title }, tdiv);
+  if (sub) el('div', { class: 'sub', text: sub }, tdiv);
+  el('div', { class: 'spacer' }, head);
+  const btn = el('button', { class: 'btn-table', text: 'Ver tabela' }, head);
+  const body = el('div', {}, card);
+  let table = false;
+  const draw = () => {
+    if (table) {
+      const totalAll = entries.reduce((s, [, v]) => s + v, 0) || 1;
+      renderTable(body, [opts.dim || 'Categoria', 'Leads', '%'],
+        entries.map(([n, v]) => [n, fmt.format(v), fmtPct(v / totalAll)]));
+    } else {
+      renderHBars(body, entries, opts);
+    }
+    btn.textContent = table ? 'Ver gráfico' : 'Ver tabela';
+  };
+  btn.addEventListener('click', () => { table = !table; draw(); });
+  draw();
+  return card;
+}
+
+// ---------- aba Origem (UTMs) ----------
+{
+  const grid = $('#utm-grid');
+  const u = DATA.utm;
+  const onlyEmpty = (entries) => entries.length === 1 && entries[0][0] === '(não informado)';
+  if ([u.source, u.medium, u.campaign].every(onlyEmpty)) {
+    el('div', { class: 'hint', text: 'As UTMs ainda não começaram a chegar nos leads. Assim que a página de captura enviar utm_source, utm_medium e utm_campaign para o Active Campaign, os gráficos abaixo se preenchem automaticamente.' }, $('#utm-hint'));
+  }
+  chartCard(grid, 'Leads por origem (utm_source)', 'De onde o lead veio', u.source, { dim: 'utm_source' });
+  chartCard(grid, 'Leads por mídia (utm_medium)', 'Tráfego pago, orgânico, e-mail…', u.medium, { dim: 'utm_medium' });
+  chartCard(grid, 'Leads por campanha (utm_campaign)', 'Qual campanha converteu', u.campaign, { dim: 'utm_campaign' });
+  chartCard(grid, 'Leads por criativo (utm_content)', 'Qual anúncio/criativo converteu', u.content, { dim: 'utm_content' });
+  chartCard(grid, 'Leads por termo (utm_term)', 'Palavra-chave / segmentação', u.term, { dim: 'utm_term' });
+}
+
+// ---------- aba Pesquisa ----------
+{
+  const tiles = $('#survey-tiles');
+  const s = DATA.survey;
+  const c1 = el('div', { class: 'card tile' }, tiles);
+  el('div', { class: 'lbl', text: 'Leads que responderam a pesquisa' }, c1);
+  el('div', { class: 'val', text: fmt.format(s.respondents) }, c1);
+  const c2 = el('div', { class: 'card tile' }, tiles);
+  el('div', { class: 'lbl', text: 'Taxa de resposta' }, c2);
+  el('div', { class: 'val', text: DATA.total ? fmtPct(s.respondents / DATA.total) : '–' }, c2);
+
+  const grid = $('#survey-grid');
+  chartCard(grid, 'Gênero', null, s.genero, { dim: 'Gênero' });
+  chartCard(grid, 'Idade', null, s.idade, { dim: 'Faixa etária', ramp: true });
+  chartCard(grid, 'Faixa salarial', null, s.faixaSalarial, { dim: 'Faixa salarial' });
+  chartCard(grid, 'Situação profissional', null, s.situacao, { dim: 'Situação' });
+  chartCard(grid, 'Área de atuação', null, s.area, { dim: 'Área' });
+  chartCard(grid, 'Principal objetivo com IA', null, s.objetivo, { dim: 'Objetivo' });
+  chartCard(grid, 'Ferramentas de IA que usa', 'Cada lead pode marcar mais de uma', s.ferramentas, { dim: 'Ferramenta' });
+  chartCard(grid, 'Nível de experiência com IA', null, s.experiencia, { dim: 'Nível', ramp: true });
+}
+
+// ---------- alternadores das duas visões da aba Geral ----------
+renderDaily();
+renderCume();
+{
+  let dailyTable = false, cumeTable = false;
+  document.querySelector('[data-toggle="daily"]').addEventListener('click', (e) => {
+    dailyTable = !dailyTable;
+    e.target.textContent = dailyTable ? 'Ver gráfico' : 'Ver tabela';
+    if (dailyTable) {
+      renderTable($('#chart-daily'), ['Dia', 'Leads'], DATA.byDay.map((d) => [dayLabel(d.date), fmt.format(d.total)]));
+    } else renderDaily();
+  });
+  document.querySelector('[data-toggle="cume"]').addEventListener('click', (e) => {
+    cumeTable = !cumeTable;
+    e.target.textContent = cumeTable ? 'Ver gráfico' : 'Ver tabela';
+    if (cumeTable) {
+      let acc = 0;
+      renderTable($('#chart-cume'), ['Dia', 'Leads no dia', 'Acumulado', 'Ritmo da meta'],
+        DATA.byDay.map((d, i) => {
+          acc += d.total;
+          return [dayLabel(d.date), fmt.format(d.total), fmt.format(acc), fmt.format(Math.round((DATA.config.goal * (i + 1)) / days.length))];
+        }));
+    } else renderCume();
+  });
+}
+</script>
+</body>
+</html>
