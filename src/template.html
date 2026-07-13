@@ -84,6 +84,19 @@
   .meter > div { height: 100%; border-radius: 999px; background: var(--accent); }
   .meter-legend { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; }
   .meter-legend strong { color: var(--ink-2); font-weight: 600; }
+  .split { display: flex; gap: 2px; height: 6px; border-radius: 999px; overflow: hidden; margin-top: 16px; }
+  .split > div { height: 100%; }
+  .split .p-novo { background: var(--s1); border-radius: 999px 0 0 999px; }
+  .split .p-quente { background: var(--s6); border-radius: 0 999px 999px 0; }
+  .key-dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; margin-right: 6px; vertical-align: 0; }
+
+  .seg-ctl { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg-ctl button {
+    appearance: none; background: none; border: none; color: var(--muted);
+    font: inherit; font-size: 11px; font-weight: 600; padding: 4px 10px; cursor: pointer; white-space: nowrap;
+  }
+  .seg-ctl button + button { border-left: 1px solid var(--border); }
+  .seg-ctl button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); }
 
   .tile .lbl { font-size: 12px; color: var(--muted); }
   .tile .val { font-size: 24px; font-weight: 650; margin-top: 4px; }
@@ -160,6 +173,11 @@
             <span><strong id="meter-pct">–</strong> da meta</span>
             <span>Meta: <strong id="meter-goal">–</strong></span>
           </div>
+          <div class="split" role="img" id="split-bar">
+            <div class="p-novo" id="split-novo"></div>
+            <div class="p-quente" id="split-quente"></div>
+          </div>
+          <div class="meter-legend" id="split-legend"></div>
         </div>
       </div>
     </div>
@@ -173,6 +191,10 @@
           <div class="sub" id="daily-sub"></div>
         </div>
         <div class="spacer"></div>
+        <div class="seg-ctl" role="group" aria-label="Modo de visualização">
+          <button data-view="origem" aria-pressed="true">Por origem</button>
+          <button data-view="tipo" aria-pressed="false">Novos × Quentes</button>
+        </div>
         <button class="btn-table" data-toggle="daily">Ver tabela</button>
       </div>
       <div id="chart-daily"></div>
@@ -312,6 +334,23 @@ document.querySelectorAll('nav.tabs button').forEach((btn) => {
   $('#meter-goal').textContent = fmt.format(goal);
   $('#meter').setAttribute('aria-label',
     fmt.format(DATA.total) + ' de ' + fmt.format(goal) + ' leads (' + fmtPct(DATA.total / goal) + ' da meta)');
+
+  // barra secundária: proporção leads novos × quentes
+  const novos = DATA.novos ?? 0, quentes = DATA.quentes ?? 0;
+  const base = Math.max(1, novos + quentes);
+  $('#split-novo').style.width = ((novos / base) * 100).toFixed(2) + '%';
+  $('#split-quente').style.width = ((quentes / base) * 100).toFixed(2) + '%';
+  $('#split-bar').setAttribute('aria-label',
+    'Leads novos: ' + fmt.format(novos) + ' (' + fmtPct(novos / base) + '); leads quentes: ' + fmt.format(quentes) + ' (' + fmtPct(quentes / base) + ')');
+  const sl = $('#split-legend');
+  const mkKey = (color, label, val) => {
+    const s = el('span', {}, sl);
+    const dot = el('i', { class: 'key-dot' }, s); dot.style.background = color;
+    s.appendChild(document.createTextNode(label + ' '));
+    el('strong', { text: fmt.format(val) + ' (' + fmtPct(val / base) + ')' }, s);
+  };
+  mkKey('#3987e5', 'Novos', novos);
+  mkKey('#d95926', 'Quentes', quentes);
 }
 
 // ---------- cartões de estatísticas ----------
@@ -326,12 +365,19 @@ document.querySelectorAll('nav.tabs button').forEach((btn) => {
   const ontem = elapsed >= 2 ? DATA.byDay[elapsed - 2].total : null;
   const anteontem = elapsed >= 3 ? DATA.byDay[elapsed - 3].total : null;
 
-  function tile(lbl, val, deltaText, deltaDir) {
+  function tile(lbl, val, deltaText, deltaDir, keyColor) {
     const c = el('div', { class: 'card tile' }, tiles);
-    el('div', { class: 'lbl', text: lbl }, c);
+    const l = el('div', { class: 'lbl' }, c);
+    if (keyColor) { const dot = el('i', { class: 'key-dot' }, l); dot.style.background = keyColor; }
+    l.appendChild(document.createTextNode(lbl));
     el('div', { class: 'val', text: val }, c);
     if (deltaText) el('div', { class: 'delta ' + (deltaDir || ''), text: deltaText }, c);
   }
+
+  // estratificação novos × quentes (mesmas cores do gráfico)
+  const baseTipo = Math.max(1, (DATA.novos ?? 0) + (DATA.quentes ?? 0));
+  tile('Leads novos', fmt.format(DATA.novos ?? 0), fmtPct((DATA.novos ?? 0) / baseTipo) + ' do total · entraram na base agora', '', '#3987e5');
+  tile('Leads quentes', fmt.format(DATA.quentes ?? 0), fmtPct((DATA.quentes ?? 0) / baseTipo) + ' do total · já estavam na base', '', '#d95926');
 
   if (!started) {
     tile('Status', 'Aguardando início', 'Captação começa em ' + dayLabel(DATA.config.start));
@@ -356,14 +402,26 @@ document.querySelectorAll('nav.tabs button').forEach((btn) => {
 }
 
 // ---------- gráfico: colunas empilhadas por dia ----------
-function renderDaily() {
+// view = 'origem' (empilhado por utm_source) ou 'tipo' (novos × quentes)
+function renderDaily(view) {
   const host = $('#chart-daily');
   host.textContent = '';
-  const series = DATA.stackSeries.filter((s) => DATA.byDay.some((d) => (d.bySource[s] || 0) > 0));
-  const colors = {};
-  series.forEach((s, i) => { colors[s] = CAT[i % CAT.length]; });
-
-  $('#daily-sub').textContent = series.length > 1 ? 'Leads por dia, divididos por utm_source' : 'Leads por dia';
+  let series, colors, valueOf, subText, withPct;
+  if (view === 'tipo') {
+    series = ['Leads novos', 'Leads quentes'];
+    colors = { 'Leads novos': '#3987e5', 'Leads quentes': '#d95926' };
+    valueOf = (d, s) => (s === 'Leads novos' ? (d.novos || 0) : (d.quentes || 0));
+    subText = 'Leads por dia — novos (entraram agora) × quentes (já estavam na base)';
+    withPct = true;
+  } else {
+    series = DATA.stackSeries.filter((s) => DATA.byDay.some((d) => (d.bySource[s] || 0) > 0));
+    colors = {};
+    series.forEach((s, i) => { colors[s] = CAT[i % CAT.length]; });
+    valueOf = (d, s) => d.bySource[s] || 0;
+    subText = series.length > 1 ? 'Leads por dia, divididos por utm_source' : 'Leads por dia';
+    withPct = false;
+  }
+  $('#daily-sub').textContent = subText;
 
   const wrap = el('div', { class: 'chartwrap' }, host);
   const W = 760, H = 290, mL = 46, mR = 10, mT = 12, mB = 30;
@@ -386,7 +444,7 @@ function renderDaily() {
   DATA.byDay.forEach((d, i) => {
     const cx = mL + slot * i + slot / 2;
     let cursor = mT + ph;
-    const segs = series.map((s) => [s, d.bySource[s] || 0]).filter(([, v]) => v > 0);
+    const segs = series.map((s) => [s, valueOf(d, s)]).filter(([, v]) => v > 0);
     segs.forEach(([s, v], k) => {
       const hpx = (v / maxV) * ph;
       const gap = k > 0 ? 2 : 0;
@@ -410,7 +468,11 @@ function renderDaily() {
     // alvo de interação: a coluna inteira
     const hit = el('rect', { x: mL + slot * i, y: mT, width: slot, height: ph, fill: 'transparent', tabindex: 0 }, svg);
     const onShow = (evt) => {
-      const rows = segs.slice().reverse().map(([s, v]) => ({ name: s, value: fmt.format(v), color: colors[s] }));
+      const rows = segs.slice().reverse().map(([s, v]) => ({
+        name: s,
+        value: withPct && d.total > 0 ? fmt.format(v) + ' (' + fmtPct(v / d.total) + ')' : fmt.format(v),
+        color: colors[s],
+      }));
       rows.push({ name: 'Total', value: fmt.format(d.total) });
       const p = evt.clientX !== undefined ? evt : { clientX: hit.getBoundingClientRect().x, clientY: hit.getBoundingClientRect().y };
       showTip(p, dayLabel(d.date) + '/2026', rows);
@@ -629,16 +691,29 @@ function chartCard(parentSel, title, sub, entries, opts = {}) {
 }
 
 // ---------- alternadores das duas visões da aba Geral ----------
-renderDaily();
+let dailyView = 'origem';
+renderDaily(dailyView);
 renderCume();
 {
   let dailyTable = false, cumeTable = false;
+  const redrawDaily = () => {
+    if (dailyTable) {
+      $('#daily-sub').textContent = 'Leads por dia — novos × quentes';
+      renderTable($('#chart-daily'), ['Dia', 'Novos', 'Quentes', 'Total'],
+        DATA.byDay.map((d) => [dayLabel(d.date), fmt.format(d.novos || 0), fmt.format(d.quentes || 0), fmt.format(d.total)]));
+    } else renderDaily(dailyView);
+  };
+  document.querySelectorAll('.seg-ctl button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      dailyView = btn.dataset.view;
+      document.querySelectorAll('.seg-ctl button').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      redrawDaily();
+    });
+  });
   document.querySelector('[data-toggle="daily"]').addEventListener('click', (e) => {
     dailyTable = !dailyTable;
     e.target.textContent = dailyTable ? 'Ver gráfico' : 'Ver tabela';
-    if (dailyTable) {
-      renderTable($('#chart-daily'), ['Dia', 'Leads'], DATA.byDay.map((d) => [dayLabel(d.date), fmt.format(d.total)]));
-    } else renderDaily();
+    redrawDaily();
   });
   document.querySelector('[data-toggle="cume"]').addEventListener('click', (e) => {
     cumeTable = !cumeTable;

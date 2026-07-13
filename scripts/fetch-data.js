@@ -18,6 +18,9 @@ const CONFIG = {
   tagId: '238252',
   tagName: 'l14-imersao-ia-ago26-inscricao',
   timeZone: 'America/Sao_Paulo',
+  // Contato criado ANTES desta data = "Lead Quente" (já estava na base);
+  // criado a partir dela = "Lead Novo". Referência: início da captação.
+  leadNovoDesde: '2026-07-13',
 };
 
 // IDs dos campos personalizados no Active Campaign
@@ -162,6 +165,9 @@ function aggregate(contacts, fieldsByContact) {
   const dayIndex = new Map(days.map((d, i) => [d, i]));
 
   const byDayTotal = new Array(days.length).fill(0);
+  const byDayNovos = new Array(days.length).fill(0);
+  let novos = 0;
+  let quentes = 0;
   const sourceCounts = new Map();
   const mediumCounts = new Map();
   const campaignCounts = new Map();
@@ -185,6 +191,11 @@ function aggregate(contacts, fieldsByContact) {
   for (const c of contacts) {
     const f = fieldsByContact.get(c.id) ?? {};
 
+    // Lead Novo = contato criado a partir do início da captação; antes disso = Lead Quente
+    const criadoEm = dayInSP(c.cdate) ?? '';
+    const isNovo = criadoEm >= CONFIG.leadNovoDesde;
+    if (isNovo) novos += 1; else quentes += 1;
+
     // Dia do lead: campo "Data de Inscrição" se válido; senão, data de criação do contato
     let day = null;
     const insc = String(f[FIELD.dataInscricao] ?? '').slice(0, 10);
@@ -194,6 +205,7 @@ function aggregate(contacts, fieldsByContact) {
     if (day && dayIndex.has(day)) {
       const i = dayIndex.get(day);
       byDayTotal[i] += 1;
+      if (isNovo) byDayNovos[i] += 1;
       count(perDaySource[i], norm(f[FIELD.utm_source], { lower: true }));
     } else {
       foraPeriodo += 1;
@@ -236,7 +248,7 @@ function aggregate(contacts, fieldsByContact) {
       else outros += n;
     }
     if (outros > 0) bySource.outros = outros;
-    return { date, total: byDayTotal[i], bySource };
+    return { date, total: byDayTotal[i], novos: byDayNovos[i], quentes: byDayTotal[i] - byDayNovos[i], bySource };
   });
 
   return {
@@ -244,6 +256,8 @@ function aggregate(contacts, fieldsByContact) {
     sampleData: false,
     config: CONFIG,
     total: contacts.length,
+    novos,
+    quentes,
     foraPeriodo,
     stackSeries: [...topSources, 'outros'],
     byDay,
@@ -286,11 +300,14 @@ function sampleData() {
 
   const simulatedDays = 13; // simula uma captação no meio do caminho
   const byDay = days.map((date, i) => {
-    if (i >= simulatedDays) return { date, total: 0, bySource: {} };
+    if (i >= simulatedDays) return { date, total: 0, novos: 0, quentes: 0, bySource: {} };
     // Curva típica de lançamento: forte no início, vale no meio, pico no fim
     const t = i / (days.length - 1);
     const shape = 1.5 - 1.1 * t + 2.2 * t * t + (i === 0 ? 0.8 : 0) + (t > 0.9 ? 1.2 : 0);
     const total = Math.round(shape * (900 + rnd() * 450));
+    // Base quente responde mais no início; tráfego frio (novos) domina depois
+    const novoShare = Math.min(0.9, 0.5 + 0.45 * (i / simulatedDays)) * (0.92 + rnd() * 0.16);
+    const novos = Math.min(total, Math.round(total * novoShare));
     const bySource = {};
     let rest = total;
     sources.forEach((s, k) => {
@@ -299,10 +316,11 @@ function sampleData() {
       rest -= bySource[s];
     });
     if (rest > 0) bySource.outros = rest;
-    return { date, total, bySource };
+    return { date, total, novos, quentes: total - novos, bySource };
   });
 
   const total = byDay.reduce((s, d) => s + d.total, 0);
+  const novos = byDay.reduce((s, d) => s + d.novos, 0);
   const share = (frac) => Math.round(total * frac);
 
   return {
@@ -310,6 +328,8 @@ function sampleData() {
     sampleData: true,
     config: CONFIG,
     total,
+    novos,
+    quentes: total - novos,
     foraPeriodo: 0,
     stackSeries: [...sources, 'outros'],
     byDay,
