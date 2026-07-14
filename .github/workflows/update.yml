@@ -2,10 +2,12 @@ name: Atualizar dashboard
 
 on:
   schedule:
-    # Horários em UTC (Brasília = UTC-3): 07:00, 12:00 e 18:00 em Brasília
-    - cron: '0 10 * * *'
-    - cron: '0 15 * * *'
-    - cron: '0 21 * * *'
+    # Horários em UTC (Brasília = UTC-3): ~07:23, ~12:23 e ~18:23 em Brasília.
+    # Minuto 23 de propósito: o minuto 0 é o mais congestionado do GitHub
+    # e causa atrasos de até 1h+; minutos "quebrados" disparam bem mais perto do horário.
+    - cron: '23 10 * * *'
+    - cron: '23 15 * * *'
+    - cron: '23 21 * * *'
   workflow_dispatch: {}
   push:
     branches: [main]
