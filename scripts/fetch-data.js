@@ -11,16 +11,26 @@
 const fs = require('fs');
 const path = require('path');
 
+// A configuração da campanha (datas, meta, tag) NÃO fica no código público:
+// vem das Variables do repositório (CI) ou de data/config.local.json (local, fora do git).
+function loadLocalConfig() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'config.local.json'), 'utf8'));
+  } catch {
+    return {};
+  }
+}
+const LOCAL = loadLocalConfig();
 const CONFIG = {
-  start: '2026-07-13',
-  end: '2026-08-03',
-  goal: 38000,
-  tagId: '238252',
-  tagName: 'l14-imersao-ia-ago26-inscricao',
+  start: process.env.CAPTACAO_START || LOCAL.start || '2026-01-05',
+  end: process.env.CAPTACAO_END || LOCAL.end || '2026-01-26',
+  goal: Number(process.env.CAPTACAO_META || LOCAL.goal || 10000),
+  tagId: process.env.AC_TAG_ID || LOCAL.tagId || '',
+  tagName: process.env.AC_TAG_NAME || LOCAL.tagName || 'captacao',
   timeZone: 'America/Sao_Paulo',
   // Contato criado ANTES desta data = "Lead Quente" (já estava na base);
   // criado a partir dela = "Lead Novo". Referência: início da captação.
-  leadNovoDesde: '2026-07-13',
+  leadNovoDesde: process.env.LEAD_NOVO_DESDE || LOCAL.leadNovoDesde || process.env.CAPTACAO_START || LOCAL.start || '2026-01-05',
 };
 
 // IDs dos campos personalizados no Active Campaign
@@ -153,7 +163,7 @@ async function fetchAllContacts(baseUrl, apiKey) {
       fieldsByContact.set(fv.contact, m);
     }
     offset += 100;
-    console.log(`  ${Math.min(offset, total)}/${total} contatos baixados`);
+    // Sem números nos logs: em repositório público os logs do CI são visíveis a todos
     if (page.length === 0) break;
     await sleep(250); // respeita o limite de requisições do AC
   }
@@ -360,9 +370,12 @@ async function main() {
 
   let data;
   if (baseUrl && apiKey) {
-    console.log(`Buscando leads com a tag ${CONFIG.tagName} no Active Campaign...`);
+    if (!CONFIG.tagId || !process.env.CAPTACAO_START || !process.env.CAPTACAO_META) {
+      throw new Error('Configuração da campanha ausente no CI: defina as Variables CAPTACAO_START, CAPTACAO_END, CAPTACAO_META, AC_TAG_ID e AC_TAG_NAME no repositório.');
+    }
+    console.log('Buscando dados no Active Campaign...');
     const { contacts, fieldsByContact } = await fetchAllContacts(baseUrl, apiKey);
-    console.log(`Total: ${contacts.length} leads. Agregando...`);
+    console.log('Download concluído. Agregando...');
     data = aggregate(contacts, fieldsByContact);
   } else {
     console.log('AC_BASE_URL / AC_API_KEY não definidos — gerando DADOS DE EXEMPLO.');
@@ -371,7 +384,7 @@ async function main() {
 
   fs.mkdirSync(path.dirname(OUT_FILE), { recursive: true });
   fs.writeFileSync(OUT_FILE, JSON.stringify(data, null, 2));
-  console.log(`OK: ${OUT_FILE} gravado (${data.total} leads${data.sampleData ? ', dados de exemplo' : ''}).`);
+  console.log(`OK: dados agregados gravados${data.sampleData ? ' (dados de exemplo)' : ''}.`);
 }
 
 main().catch((err) => {

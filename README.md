@@ -1,9 +1,7 @@
-# Dashboard de Captação — L14 (Etek Academy)
+# Dashboard de Captação
 
-Dashboard web que acompanha a captação de leads do lançamento L14
-(Imersão IA, ago/2026), com dados do Active Campaign.
-
-**Período:** 13/07/2026 a 03/08/2026 · **Meta:** 38.000 leads
+Dashboard web que acompanha uma captação de leads, com dados agregados
+do Active Campaign, atualizado automaticamente e publicado com senha.
 
 ## Como funciona
 
@@ -15,39 +13,49 @@ Active Campaign  ──►  fetch-data.js  ──►  data.json (só números ag
                         dist/index.html  ──►  StatiCrypt (senha)  ──►  GitHub Pages
 ```
 
-1. Todo dia às **07:00 (Brasília)** o GitHub Actions roda sozinho.
-2. `scripts/fetch-data.js` busca no Active Campaign todos os contatos com a tag
-   `l14-imersao-ia-ago26-inscricao` e gera **apenas dados agregados**
-   (totais por dia, por UTM, respostas da pesquisa). **Nenhum e-mail, nome ou
-   dado pessoal sai do Active Campaign.**
+1. O GitHub Actions roda nos horários agendados no workflow.
+2. `scripts/fetch-data.js` busca no Active Campaign os contatos da tag da
+   campanha e gera **apenas dados agregados** (totais por dia, por UTM,
+   respostas de pesquisa). **Nenhum e-mail, nome ou dado pessoal sai do
+   Active Campaign.**
 3. `scripts/build.js` injeta os dados no template e gera um HTML único.
-4. O StatiCrypt criptografa a página com a senha do secret `DASHBOARD_PASSWORD` —
-   sem a senha, o conteúdo é ilegível (criptografia AES-256 no navegador).
-5. O GitHub Pages publica o link fixo para os gestores.
+4. O StatiCrypt criptografa a página com a senha do secret `DASHBOARD_PASSWORD`.
+5. O GitHub Pages publica o link fixo.
 
 Sem a chave da API configurada, o script gera **dados de exemplo**
-(marcados com o selo "DADOS DE EXEMPLO" no topo da página).
+(marcados com um selo na página).
 
-## Secrets (Settings → Secrets and variables → Actions)
+## Configuração
+
+**Secrets** (Settings → Secrets and variables → Actions → Secrets):
 
 | Secret | O que é |
 |---|---|
-| `AC_BASE_URL` | URL da API do Active Campaign (ex.: `https://suaconta.api-us1.com`) |
-| `AC_API_KEY` | Chave de API (Active Campaign → Configurações → Desenvolvedor) |
-| `DASHBOARD_PASSWORD` | Senha que os gestores usam para abrir o dashboard |
+| `AC_BASE_URL` | URL da API do Active Campaign |
+| `AC_API_KEY` | Chave de API |
+| `DASHBOARD_PASSWORD` | Senha de acesso ao dashboard |
 
-## Rodar no computador (opcional)
+**Variables** (Settings → Secrets and variables → Actions → Variables) —
+os parâmetros da campanha não ficam no código:
+
+| Variable | O que é |
+|---|---|
+| `CAPTACAO_START` / `CAPTACAO_END` | Período da captação (AAAA-MM-DD) |
+| `CAPTACAO_META` | Meta de leads |
+| `AC_TAG_ID` / `AC_TAG_NAME` | Tag que identifica os leads da campanha |
+| `LEAD_NOVO_DESDE` | Contatos criados a partir desta data contam como "lead novo" |
+
+Para rodar localmente, crie `data/config.local.json` (fora do git) com os
+mesmos parâmetros em minúsculas: `start`, `end`, `goal`, `tagId`, `tagName`,
+`leadNovoDesde`. Depois:
 
 ```
-node scripts/fetch-data.js   # gera data/data.json (exemplo, sem a chave)
-node scripts/build.js        # gera dist/index.html
+node scripts/fetch-data.js
+node scripts/build.js
 ```
-
-Abra `dist/index.html` no navegador.
 
 ## Ajustes comuns
 
-- **Meta ou datas mudaram?** Edite `CONFIG` no topo de `scripts/fetch-data.js`.
-- **Trocar a senha?** Atualize o secret `DASHBOARD_PASSWORD` e rode o workflow
-  manualmente (aba Actions → "Atualizar dashboard" → Run workflow).
+- **Meta ou datas mudaram?** Atualize as Variables no repositório.
+- **Trocar a senha?** Atualize o secret `DASHBOARD_PASSWORD` e rode o workflow.
 - **Atualizar fora do horário?** Aba Actions → "Atualizar dashboard" → Run workflow.

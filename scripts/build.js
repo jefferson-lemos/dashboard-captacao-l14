@@ -20,4 +20,4 @@ const html = template
 
 fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(ROOT, 'dist', 'index.html'), html);
-console.log(`OK: dist/index.html gerado (${(html.length / 1024).toFixed(0)} KB, ${parsed.total} leads${parsed.sampleData ? ', dados de exemplo' : ''}).`);
+console.log(`OK: dist/index.html gerado (${(html.length / 1024).toFixed(0)} KB${parsed.sampleData ? ', dados de exemplo' : ''}).`);
