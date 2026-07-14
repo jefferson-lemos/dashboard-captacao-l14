@@ -39,12 +39,13 @@ jobs:
         env:
           AC_BASE_URL: ${{ secrets.AC_BASE_URL }}
           AC_API_KEY: ${{ secrets.AC_API_KEY }}
-          CAPTACAO_START: ${{ vars.CAPTACAO_START }}
-          CAPTACAO_END: ${{ vars.CAPTACAO_END }}
-          CAPTACAO_META: ${{ vars.CAPTACAO_META }}
-          AC_TAG_ID: ${{ vars.AC_TAG_ID }}
-          AC_TAG_NAME: ${{ vars.AC_TAG_NAME }}
-          LEAD_NOVO_DESDE: ${{ vars.LEAD_NOVO_DESDE }}
+          # Como Secrets (não Variables): o GitHub mascara secrets nos logs públicos
+          CAPTACAO_START: ${{ secrets.CAPTACAO_START }}
+          CAPTACAO_END: ${{ secrets.CAPTACAO_END }}
+          CAPTACAO_META: ${{ secrets.CAPTACAO_META }}
+          AC_TAG_ID: ${{ secrets.AC_TAG_ID }}
+          AC_TAG_NAME: ${{ secrets.AC_TAG_NAME }}
+          LEAD_NOVO_DESDE: ${{ secrets.LEAD_NOVO_DESDE }}
 
       - name: Montar o dashboard
         run: node scripts/build.js
