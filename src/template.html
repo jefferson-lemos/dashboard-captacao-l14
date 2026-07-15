@@ -680,14 +680,9 @@ function chartCard(parentSel, title, sub, entries, opts = {}) {
   el('div', { class: 'val', text: DATA.total ? fmtPct(s.respondents / DATA.total) : '–' }, c2);
 
   const grid = $('#survey-grid');
-  chartCard(grid, 'Gênero', null, s.genero, { dim: 'Gênero' });
-  chartCard(grid, 'Idade', null, s.idade, { dim: 'Faixa etária', ramp: true });
-  chartCard(grid, 'Faixa salarial', null, s.faixaSalarial, { dim: 'Faixa salarial' });
-  chartCard(grid, 'Situação profissional', null, s.situacao, { dim: 'Situação' });
-  chartCard(grid, 'Área de atuação', null, s.area, { dim: 'Área' });
-  chartCard(grid, 'Principal objetivo com IA', null, s.objetivo, { dim: 'Objetivo' });
-  chartCard(grid, 'Ferramentas de IA que usa', 'Cada lead pode marcar mais de uma', s.ferramentas, { dim: 'Ferramenta' });
-  chartCard(grid, 'Nível de experiência com IA', null, s.experiencia, { dim: 'Nível', ramp: true });
+  (s.charts || []).forEach((c) => {
+    chartCard(grid, c.title, c.sub || null, c.entries, { dim: c.title, ramp: !!c.ramp });
+  });
 }
 
 // ---------- alternadores das duas visões da aba Geral ----------

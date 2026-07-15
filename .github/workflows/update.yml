@@ -48,6 +48,8 @@ jobs:
           AC_TAG_ID: ${{ secrets.AC_TAG_ID }}
           AC_TAG_NAME: ${{ secrets.AC_TAG_NAME }}
           LEAD_NOVO_DESDE: ${{ secrets.LEAD_NOVO_DESDE }}
+          PESQUISA_URL: ${{ secrets.PESQUISA_URL }}
+          PESQUISA_TOKEN: ${{ secrets.PESQUISA_TOKEN }}
 
       - name: Montar o dashboard
         run: node scripts/build.js

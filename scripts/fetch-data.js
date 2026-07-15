@@ -327,16 +327,72 @@ function aggregate(contacts, fieldsByContact, tagDayByContact = new Map()) {
     },
     survey: {
       respondents,
-      genero: topN(survey.genero, 6),
-      idade: topN(survey.idade, 10, { order: IDADE_ORDER }),
-      faixaSalarial: topN(survey.faixaSalarial, 8),
-      situacao: topN(survey.situacao, 8),
-      area: topN(survey.area, 8),
-      objetivo: topN(survey.objetivo, 10),
-      ferramentas: topN(survey.ferramentas, 10),
-      experiencia: topN(survey.experiencia, 4, { order: EXPERIENCIA_ORDER }),
+      charts: [
+        { key: 'genero', title: 'Gênero', entries: topN(survey.genero, 6) },
+        { key: 'idade', title: 'Idade', entries: topN(survey.idade, 10, { order: IDADE_ORDER }), ramp: true },
+        { key: 'faixaSalarial', title: 'Faixa salarial', entries: topN(survey.faixaSalarial, 8) },
+        { key: 'situacao', title: 'Situação profissional', entries: topN(survey.situacao, 8) },
+        { key: 'area', title: 'Área de atuação', entries: topN(survey.area, 8) },
+        { key: 'objetivo', title: 'Principal objetivo com IA', entries: topN(survey.objetivo, 10) },
+        { key: 'ferramentas', title: 'Ferramentas de IA que usa', sub: 'Cada lead pode marcar mais de uma', entries: topN(survey.ferramentas, 10) },
+        { key: 'experiencia', title: 'Nível de experiência com IA', entries: topN(survey.experiencia, 4, { order: EXPERIENCIA_ORDER }), ramp: true },
+      ].filter((c) => c.entries.length > 0),
     },
   };
+}
+
+// ---------- pesquisa via agregador na planilha (Apps Script) ----------
+// O agregador devolve SÓ contagens: {respostas, perguntas: {chave: {rótulo: n}}}
+async function fetchSurveyFromSheet(url, token) {
+  const res = await fetch(`${url}?token=${encodeURIComponent(token)}`);
+  if (!res.ok) throw new Error(`Agregador da pesquisa respondeu ${res.status}`);
+  const json = await res.json();
+  if (json.erro) throw new Error(`Agregador da pesquisa: ${json.erro}`);
+
+  const TITLES = {
+    genero: 'Gênero',
+    idade: 'Idade',
+    situacao: 'Situação profissional',
+    cargo: 'Nível do cargo atual',
+    area: 'Área de atuação',
+    faixaSalarial: 'Faixa salarial',
+    experiencia: 'Conhecimento sobre IA',
+    treinamentoGratuito: 'Já participou de treinamento gratuito de IA?',
+    motivacao: 'Principal motivação para aprender IA',
+    tempoConheceKarine: 'Há quanto tempo conhece a Karine?',
+    comparecerAulas: 'Planeja comparecer às 4 aulas?',
+  };
+  // Perguntas de faixa (idade, salário): ordena pelo valor, não pela contagem
+  const ORDINAIS = ['idade', 'faixaSalarial'];
+  const ordemNumerica = (label) => {
+    const m = String(label).replace(/\./g, '').match(/\d+/);
+    if (!m) return Number.MAX_SAFE_INTEGER;
+    let n = parseInt(m[0], 10);
+    if (/menor|menos de|até/i.test(label)) n -= 1;
+    if (/mais|acima/i.test(label)) n += 1;
+    return n;
+  };
+
+  const charts = [];
+  for (const [key, title] of Object.entries(TITLES)) {
+    const counts = json.perguntas?.[key];
+    if (!counts) continue;
+    const m = new Map();
+    for (const [label, n] of Object.entries(counts)) {
+      // remove prefixos de alternativa do formulário: "A) Masculino" -> "Masculino"
+      const clean = label.replace(/^[A-Za-z]\)\s*/, '').trim();
+      if (clean) m.set(clean, (m.get(clean) ?? 0) + Number(n));
+    }
+    if (m.size === 0) continue;
+    let entries;
+    if (ORDINAIS.includes(key)) {
+      entries = [...m.entries()].sort((a, b) => ordemNumerica(a[0]) - ordemNumerica(b[0]));
+    } else {
+      entries = topN(m, 10);
+    }
+    charts.push({ key, title, entries, ramp: ORDINAIS.includes(key) });
+  }
+  return { respondents: Number(json.respostas ?? 0), charts };
 }
 
 // ---------- Dados de exemplo (usados enquanto não há chave de API) ----------
@@ -399,14 +455,15 @@ function sampleData() {
     },
     survey: {
       respondents: share(0.62),
-      genero: [['Feminino', share(0.33)], ['Masculino', share(0.27)], ['Outro', share(0.02)]],
-      idade: [['18 a 24', share(0.08)], ['25 a 34', share(0.22)], ['35 a 44', share(0.18)], ['45 a 54', share(0.1)], ['55 ou mais', share(0.04)]],
-      faixaSalarial: [['Até R$ 2.000', share(0.1)], ['R$ 2.001 a R$ 4.000', share(0.18)], ['R$ 4.001 a R$ 7.000', share(0.16)], ['R$ 7.001 a R$ 12.000', share(0.12)], ['Acima de R$ 12.000', share(0.06)]],
-      situacao: [['CLT', share(0.34)], ['Autônomo(a)', share(0.12)], ['Servidor público', share(0.08)], ['Desempregado(a)', share(0.05)], ['Estudante', share(0.03)]],
-      area: [['Dados (Analista de dados, BI, cientista de dados, engenheiro de dados, etc)', share(0.14)], ['Finanças (controladoria, financeiro, contas a pagar/receber, custos, etc)', share(0.12)], ['Marketing/Comercial (Vendas, analista de marketing, comunicação, publicidade)', share(0.11)], ['Supply Chain (Logística, compras, planejamento, comércio exterior)', share(0.09)], ['TI (analista de sistemas, desenvolvedor, UI/UX designer, etc)', share(0.08)], ['Engenharia (Produção, civil, qualidade, ambiental, química)', share(0.05)], ['Administrativo geral (RH, atendimento, CS)', share(0.03)]],
-      objetivo: [['Ser mais produtivo no emprego atual', share(0.2)], ['Mudar de carreira para área de dados/tecnologia', share(0.14)], ['Usar IA para análise de dados e automações', share(0.12)], ['Me manter atualizado sobre as tendências do mercado', share(0.08)], ['Aprender do zero', share(0.05)], ['Conseguir um emprego', share(0.03)]],
-      ferramentas: [['ChatGPT', share(0.55)], ['Gemini', share(0.25)], ['Copilot', share(0.15)], ['Claude', share(0.12)], ['Deepseek', share(0.08)], ['NotebookLM', share(0.06)]],
-      experiencia: [['Nunca usei IA antes', share(0.08)], ['Básico/Iniciante', share(0.3)], ['Intermediário', share(0.2)], ['Usuário avançado', share(0.04)]],
+      charts: [
+        { key: 'genero', title: 'Gênero', entries: [['Feminino', share(0.33)], ['Masculino', share(0.27)], ['Outro', share(0.02)]] },
+        { key: 'idade', title: 'Idade', ramp: true, entries: [['18 a 24', share(0.08)], ['25 a 34', share(0.22)], ['35 a 44', share(0.18)], ['45 a 54', share(0.1)], ['55 ou mais', share(0.04)]] },
+        { key: 'faixaSalarial', title: 'Faixa salarial', entries: [['Até R$ 2.000', share(0.1)], ['R$ 2.001 a R$ 4.000', share(0.18)], ['R$ 4.001 a R$ 7.000', share(0.16)], ['R$ 7.001 a R$ 12.000', share(0.12)], ['Acima de R$ 12.000', share(0.06)]] },
+        { key: 'situacao', title: 'Situação profissional', entries: [['CLT', share(0.34)], ['Autônomo(a)', share(0.12)], ['Servidor público', share(0.08)], ['Desempregado(a)', share(0.05)], ['Estudante', share(0.03)]] },
+        { key: 'area', title: 'Área de atuação', entries: [['Dados (Analista de dados, BI, etc)', share(0.14)], ['Finanças (controladoria, financeiro, etc)', share(0.12)], ['Marketing/Comercial', share(0.11)], ['Supply Chain', share(0.09)], ['TI', share(0.08)], ['Engenharia', share(0.05)], ['Administrativo geral', share(0.03)]] },
+        { key: 'motivacao', title: 'Principal motivação para aprender IA', entries: [['Ser mais produtivo no emprego atual', share(0.2)], ['Mudar de carreira para dados/tecnologia', share(0.14)], ['Usar IA para análise e automações', share(0.12)], ['Me manter atualizado', share(0.08)], ['Aprender do zero', share(0.05)], ['Conseguir um emprego', share(0.03)]] },
+        { key: 'experiencia', title: 'Conhecimento sobre IA', entries: [['Nunca usei IA antes', share(0.08)], ['Básico/Iniciante', share(0.3)], ['Intermediário', share(0.2)], ['Usuário avançado', share(0.04)]] },
+      ],
     },
   };
 }
@@ -433,6 +490,15 @@ async function main() {
   } else {
     console.log('AC_BASE_URL / AC_API_KEY não definidos — gerando DADOS DE EXEMPLO.');
     data = sampleData();
+  }
+
+  // Pesquisa: se o agregador da planilha estiver configurado, substitui a
+  // pesquisa vinda dos campos do AC (a fonte oficial do L14 é a planilha)
+  const pesquisaUrl = process.env.PESQUISA_URL || LOCAL.pesquisaUrl;
+  const pesquisaToken = process.env.PESQUISA_TOKEN || LOCAL.pesquisaToken;
+  if (pesquisaUrl && pesquisaToken) {
+    console.log('Buscando totais da pesquisa...');
+    data.survey = await fetchSurveyFromSheet(pesquisaUrl, pesquisaToken);
   }
 
   fs.mkdirSync(path.dirname(OUT_FILE), { recursive: true });
