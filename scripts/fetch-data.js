@@ -93,8 +93,13 @@ function listDays(start, end) {
 }
 
 function norm(value, { lower = false } = {}) {
-  const v = String(value ?? '').trim();
+  let v = String(value ?? '').trim();
   if (!v) return '(não informado)';
+  // Reinscrições duplicam o valor da UTM ("meta meta"); colapsa metades idênticas
+  const half = Math.floor(v.length / 2);
+  if (v.length % 2 === 1 && v[half] === ' ' && v.slice(0, half) === v.slice(half + 1)) {
+    v = v.slice(0, half);
+  }
   return lower ? v.toLowerCase() : v;
 }
 
@@ -170,7 +175,38 @@ async function fetchAllContacts(baseUrl, apiKey) {
   return { contacts, fieldsByContact };
 }
 
-function aggregate(contacts, fieldsByContact) {
+/**
+ * Para leads QUENTES (contato criado antes da captação), a data de criação não
+ * serve como "dia do lead". A fonte correta é a data em que a tag da campanha
+ * foi aplicada — busca em /contactTags, só para esses contatos.
+ */
+async function fetchTagDates(baseUrl, apiKey, contactIds) {
+  const tagDayByContact = new Map();
+  const CONCURRENCY = 3; // respeita o limite de ~5 req/s do AC
+  let cursor = 0;
+  async function worker() {
+    while (cursor < contactIds.length) {
+      const id = contactIds[cursor++];
+      try {
+        const res = await fetch(`${baseUrl}/api/3/contacts/${id}/contactTags`, { headers: { 'Api-Token': apiKey } });
+        if (!res.ok) continue;
+        const json = await res.json();
+        const link = (json.contactTags ?? []).find((t) => String(t.tag) === String(CONFIG.tagId));
+        if (link?.cdate) {
+          const day = dayInSP(link.cdate);
+          if (day) tagDayByContact.set(String(id), day);
+        }
+      } catch {
+        // sem a data da tag, o lead cai no fallback (Data de Inscrição / criação)
+      }
+      await sleep(150);
+    }
+  }
+  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+  return tagDayByContact;
+}
+
+function aggregate(contacts, fieldsByContact, tagDayByContact = new Map()) {
   const days = listDays(CONFIG.start, CONFIG.end);
   const dayIndex = new Map(days.map((d, i) => [d, i]));
 
@@ -206,11 +242,13 @@ function aggregate(contacts, fieldsByContact) {
     const isNovo = criadoEm >= CONFIG.leadNovoDesde;
     if (isNovo) novos += 1; else quentes += 1;
 
-    // Dia do lead: campo "Data de Inscrição" se válido; senão, data de criação do contato
-    let day = null;
-    const insc = String(f[FIELD.dataInscricao] ?? '').slice(0, 10);
-    if (dayIndex.has(insc)) day = insc;
-    else day = dayInSP(c.cdate);
+    // Dia do lead, na ordem de confiança: data em que a tag da campanha foi
+    // aplicada > campo "Data de Inscrição" > data de criação do contato
+    let day = tagDayByContact.get(String(c.id)) ?? null;
+    if (!day) {
+      const insc = String(f[FIELD.dataInscricao] ?? '').slice(0, 10);
+      day = dayIndex.has(insc) ? insc : dayInSP(c.cdate);
+    }
 
     if (day && dayIndex.has(day)) {
       const i = dayIndex.get(day);
@@ -260,6 +298,15 @@ function aggregate(contacts, fieldsByContact) {
     if (outros > 0) bySource.outros = outros;
     return { date, total: byDayTotal[i], novos: byDayNovos[i], quentes: byDayTotal[i] - byDayNovos[i], bySource };
   });
+
+  // Consistência: se as contas não fecharem, é melhor falhar do que publicar número errado
+  const somaDias = byDay.reduce((s, d) => s + d.total, 0);
+  if (somaDias + foraPeriodo !== contacts.length) {
+    throw new Error('Inconsistência na agregação: soma dos dias + fora do período difere do total de leads.');
+  }
+  if (novos + quentes !== contacts.length) {
+    throw new Error('Inconsistência na agregação: novos + quentes difere do total de leads.');
+  }
 
   return {
     updatedAt: nowInSPISO(),
@@ -375,8 +422,14 @@ async function main() {
     }
     console.log('Buscando dados no Active Campaign...');
     const { contacts, fieldsByContact } = await fetchAllContacts(baseUrl, apiKey);
+    // Quentes: a data de criação é antiga; busca a data de aplicação da tag
+    const quenteIds = contacts
+      .filter((c) => (dayInSP(c.cdate) ?? '') < CONFIG.leadNovoDesde)
+      .map((c) => c.id);
+    console.log('Buscando datas de inscrição dos leads recorrentes...');
+    const tagDayByContact = await fetchTagDates(baseUrl, apiKey, quenteIds);
     console.log('Download concluído. Agregando...');
-    data = aggregate(contacts, fieldsByContact);
+    data = aggregate(contacts, fieldsByContact, tagDayByContact);
   } else {
     console.log('AC_BASE_URL / AC_API_KEY não definidos — gerando DADOS DE EXEMPLO.');
     data = sampleData();
