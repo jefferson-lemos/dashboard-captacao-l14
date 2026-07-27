@@ -150,10 +150,12 @@ function topN(map, n, { order = null } = {}) {
 async function fetchAllContacts(baseUrl, apiKey) {
   const contacts = [];
   const fieldsByContact = new Map();
+  // Data em que a tag da campanha foi aplicada, vinda em lote na mesma requisição
+  const tagDayByContact = new Map();
   let offset = 0;
   let total = Infinity;
   while (offset < total) {
-    const url = `${baseUrl}/api/3/contacts?tagid=${CONFIG.tagId}&limit=100&offset=${offset}&include=fieldValues`;
+    const url = `${baseUrl}/api/3/contacts?tagid=${CONFIG.tagId}&limit=100&offset=${offset}&include=fieldValues,contactTags`;
     const res = await fetch(url, { headers: { 'Api-Token': apiKey } });
     if (!res.ok) {
       throw new Error(`Active Campaign respondeu ${res.status}: ${await res.text()}`);
@@ -167,42 +169,60 @@ async function fetchAllContacts(baseUrl, apiKey) {
       m[fv.field] = fv.value;
       fieldsByContact.set(fv.contact, m);
     }
+    for (const ct of json.contactTags ?? []) {
+      if (String(ct.tag) !== String(CONFIG.tagId) || !ct.cdate) continue;
+      const day = dayInSP(ct.cdate);
+      if (day) tagDayByContact.set(String(ct.contact), day);
+    }
     offset += 100;
     // Sem números nos logs: em repositório público os logs do CI são visíveis a todos
     if (page.length === 0) break;
     await sleep(250); // respeita o limite de requisições do AC
   }
-  return { contacts, fieldsByContact };
+  return { contacts, fieldsByContact, tagDayByContact };
 }
 
 /**
- * Para leads QUENTES (contato criado antes da captação), a data de criação não
- * serve como "dia do lead". A fonte correta é a data em que a tag da campanha
- * foi aplicada — busca em /contactTags, só para esses contatos.
+ * Rede de segurança: se algum lead quente não vier com a data da tag no lote,
+ * busca individualmente em /contactTags. Com o lote funcionando, tende a ficar
+ * ocioso; sem ele, garante que nenhum lead suma do gráfico diário.
  */
 async function fetchTagDates(baseUrl, apiKey, contactIds) {
   const tagDayByContact = new Map();
+  const falhas = [];
   const CONCURRENCY = 3; // respeita o limite de ~5 req/s do AC
   let cursor = 0;
+  async function buscar(id) {
+    const res = await fetch(`${baseUrl}/api/3/contacts/${id}/contactTags`, { headers: { 'Api-Token': apiKey } });
+    if (!res.ok) throw new Error(String(res.status));
+    const json = await res.json();
+    const link = (json.contactTags ?? []).find((t) => String(t.tag) === String(CONFIG.tagId));
+    if (link?.cdate) {
+      const day = dayInSP(link.cdate);
+      if (day) tagDayByContact.set(String(id), day);
+    }
+  }
   async function worker() {
     while (cursor < contactIds.length) {
       const id = contactIds[cursor++];
-      try {
-        const res = await fetch(`${baseUrl}/api/3/contacts/${id}/contactTags`, { headers: { 'Api-Token': apiKey } });
-        if (!res.ok) continue;
-        const json = await res.json();
-        const link = (json.contactTags ?? []).find((t) => String(t.tag) === String(CONFIG.tagId));
-        if (link?.cdate) {
-          const day = dayInSP(link.cdate);
-          if (day) tagDayByContact.set(String(id), day);
+      let ok = false;
+      for (let tentativa = 0; tentativa < 3 && !ok; tentativa++) {
+        try {
+          await buscar(id);
+          ok = true;
+        } catch {
+          await sleep(500 * (tentativa + 1)); // recuo progressivo (limite de taxa)
         }
-      } catch {
-        // sem a data da tag, o lead cai no fallback (Data de Inscrição / criação)
       }
+      if (!ok) falhas.push(id);
       await sleep(150);
     }
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+  if (falhas.length > 0) {
+    // Sem a data, o lead sumiria do gráfico diário: melhor falhar do que publicar torto
+    throw new Error('Não foi possível obter a data de inscrição de parte dos leads recorrentes.');
+  }
   return tagDayByContact;
 }
 
@@ -475,16 +495,24 @@ async function main() {
   let data;
   if (baseUrl && apiKey) {
     if (!CONFIG.tagId || !process.env.CAPTACAO_START || !process.env.CAPTACAO_META) {
-      throw new Error('Configuração da campanha ausente no CI: defina as Variables CAPTACAO_START, CAPTACAO_END, CAPTACAO_META, AC_TAG_ID e AC_TAG_NAME no repositório.');
+      throw new Error('Configuração da campanha ausente no CI: defina os Secrets CAPTACAO_START, CAPTACAO_END, CAPTACAO_META, AC_TAG_ID e AC_TAG_NAME no repositório.');
     }
     console.log('Buscando dados no Active Campaign...');
-    const { contacts, fieldsByContact } = await fetchAllContacts(baseUrl, apiKey);
-    // Quentes: a data de criação é antiga; busca a data de aplicação da tag
-    const quenteIds = contacts
+    const { contacts, fieldsByContact, tagDayByContact } = await fetchAllContacts(baseUrl, apiKey);
+    // Quentes: a data de criação é antiga, então o dia do lead vem da data em que
+    // a tag foi aplicada — que já veio em lote. Só busca o que faltar.
+    const faltantes = contacts
       .filter((c) => (dayInSP(c.cdate) ?? '') < CONFIG.leadNovoDesde)
+      .filter((c) => !tagDayByContact.has(String(c.id)))
       .map((c) => c.id);
-    console.log('Buscando datas de inscrição dos leads recorrentes...');
-    const tagDayByContact = await fetchTagDates(baseUrl, apiKey, quenteIds);
+    if (faltantes.length > 0) {
+      console.log('Complementando datas de inscrição de leads recorrentes...');
+      for (const [id, day] of await fetchTagDates(baseUrl, apiKey, faltantes)) {
+        tagDayByContact.set(id, day);
+      }
+    } else {
+      console.log('Datas de inscrição obtidas em lote.');
+    }
     console.log('Download concluído. Agregando...');
     data = aggregate(contacts, fieldsByContact, tagDayByContact);
   } else {
