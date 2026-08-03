@@ -52,6 +52,9 @@ const FIELD = {
 };
 
 const OUT_FILE = path.join(__dirname, '..', 'data', 'data.json');
+// Última pesquisa válida, para reexibir quando a planilha não responder.
+// Fica fora do git: o perfil da audiência é informação estratégica.
+const SURVEY_CACHE = path.join(__dirname, '..', 'data', 'survey-cache.json');
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -364,10 +367,23 @@ function aggregate(contacts, fieldsByContact, tagDayByContact = new Map()) {
 // ---------- pesquisa via agregador na planilha (Apps Script) ----------
 // O agregador devolve SÓ contagens: {respostas, perguntas: {chave: {rótulo: n}}}
 async function fetchSurveyFromSheet(url, token) {
-  const res = await fetch(`${url}?token=${encodeURIComponent(token)}`);
-  if (!res.ok) throw new Error(`Agregador da pesquisa respondeu ${res.status}`);
-  const json = await res.json();
-  if (json.erro) throw new Error(`Agregador da pesquisa: ${json.erro}`);
+  // O Apps Script do Google falha de forma intermitente (404 esporádico),
+  // então uma resposta ruim isolada não pode valer como "pesquisa fora do ar".
+  let json = null;
+  let ultimoErro = null;
+  for (let tentativa = 0; tentativa < 4 && json === null; tentativa++) {
+    if (tentativa > 0) await sleep(3000 * tentativa); // recuo progressivo
+    try {
+      const res = await fetch(`${url}?token=${encodeURIComponent(token)}`);
+      if (!res.ok) throw new Error(`respondeu ${res.status}`);
+      const corpo = await res.json();
+      if (corpo.erro) throw new Error(String(corpo.erro));
+      json = corpo;
+    } catch (err) {
+      ultimoErro = err;
+    }
+  }
+  if (json === null) throw new Error(`Agregador da pesquisa: ${ultimoErro.message}`);
 
   const TITLES = {
     genero: 'Gênero',
@@ -521,12 +537,37 @@ async function main() {
   }
 
   // Pesquisa: se o agregador da planilha estiver configurado, substitui a
-  // pesquisa vinda dos campos do AC (a fonte oficial do L14 é a planilha)
+  // pesquisa vinda dos campos do AC (a fonte oficial do L14 é a planilha).
+  // Se ela estiver fora do ar, o dashboard publica mesmo assim — a captação
+  // é o dado crítico e não pode parar por causa de uma fonte secundária.
   const pesquisaUrl = process.env.PESQUISA_URL || LOCAL.pesquisaUrl;
   const pesquisaToken = process.env.PESQUISA_TOKEN || LOCAL.pesquisaToken;
   if (pesquisaUrl && pesquisaToken) {
     console.log('Buscando totais da pesquisa...');
-    data.survey = await fetchSurveyFromSheet(pesquisaUrl, pesquisaToken);
+    try {
+      data.survey = await fetchSurveyFromSheet(pesquisaUrl, pesquisaToken);
+      fs.mkdirSync(path.dirname(SURVEY_CACHE), { recursive: true });
+      fs.writeFileSync(SURVEY_CACHE, JSON.stringify({ capturedAt: nowInSPISO(), survey: data.survey }));
+    } catch (err) {
+      console.log('AVISO: pesquisa não respondeu (' + err.message + ').');
+      let cache = null;
+      try {
+        cache = JSON.parse(fs.readFileSync(SURVEY_CACHE, 'utf8'));
+      } catch {
+        cache = null;
+      }
+      if (cache?.survey) {
+        console.log('Reexibindo a última pesquisa válida.');
+        data.survey = cache.survey;
+        data.surveyStale = cache.capturedAt; // template avisa de quando é a foto
+      } else {
+        // Sem foto anterior: zera em vez de cair no que veio dos campos do AC,
+        // que é resquício de lançamentos antigos e mostraria número errado.
+        console.log('Sem foto anterior guardada. Publicando sem a pesquisa.');
+        data.survey = { respondents: 0, charts: [] };
+        data.surveyIndisponivel = true;
+      }
+    }
   }
 
   fs.mkdirSync(path.dirname(OUT_FILE), { recursive: true });

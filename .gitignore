@@ -3,3 +3,4 @@ dist/
 out/
 data/data.json
 data/config.local.json
+data/survey-cache.json

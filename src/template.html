@@ -220,6 +220,7 @@
 </section>
 
 <section id="tab-pesquisa" hidden>
+  <div id="survey-hint"></div>
   <div class="grid tiles" id="survey-tiles"></div>
   <div class="grid cols-2" id="survey-grid" style="margin-top:14px"></div>
 </section>
@@ -670,19 +671,37 @@ function chartCard(parentSel, title, sub, entries, opts = {}) {
 
 // ---------- aba Pesquisa ----------
 {
-  const tiles = $('#survey-tiles');
   const s = DATA.survey;
-  const c1 = el('div', { class: 'card tile' }, tiles);
-  el('div', { class: 'lbl', text: 'Leads que responderam a pesquisa' }, c1);
-  el('div', { class: 'val', text: fmt.format(s.respondents) }, c1);
-  const c2 = el('div', { class: 'card tile' }, tiles);
-  el('div', { class: 'lbl', text: 'Taxa de resposta' }, c2);
-  el('div', { class: 'val', text: DATA.total ? fmtPct(s.respondents / DATA.total) : '–' }, c2);
+  // Sem nenhuma foto da pesquisa, mostra só o aviso — melhor do que a aba zerada
+  if (DATA.surveyIndisponivel) {
+    el('div', { class: 'hint', text:
+      'Os dados da pesquisa estão temporariamente indisponíveis: a conexão com a planilha de respostas ' +
+      'falhou nesta atualização. Os números de captação nas outras abas seguem atualizados normalmente.' },
+      $('#survey-hint'));
+  } else {
+    // Foto anterior: os números são válidos, mas não são desta atualização
+    if (DATA.surveyStale) {
+      const d = new Date(DATA.surveyStale);
+      el('div', { class: 'hint', text:
+        'A planilha de respostas não respondeu nesta atualização. Os números da pesquisa abaixo são da ' +
+        'última leitura válida, de ' + d.toLocaleDateString('pt-BR') + ' às ' +
+        d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '. ' +
+        'As demais abas seguem atualizadas normalmente.' },
+        $('#survey-hint'));
+    }
+    const tiles = $('#survey-tiles');
+    const c1 = el('div', { class: 'card tile' }, tiles);
+    el('div', { class: 'lbl', text: 'Leads que responderam a pesquisa' }, c1);
+    el('div', { class: 'val', text: fmt.format(s.respondents) }, c1);
+    const c2 = el('div', { class: 'card tile' }, tiles);
+    el('div', { class: 'lbl', text: 'Taxa de resposta' }, c2);
+    el('div', { class: 'val', text: DATA.total ? fmtPct(s.respondents / DATA.total) : '–' }, c2);
 
-  const grid = $('#survey-grid');
-  (s.charts || []).forEach((c) => {
-    chartCard(grid, c.title, c.sub || null, c.entries, { dim: c.title, ramp: !!c.ramp });
-  });
+    const grid = $('#survey-grid');
+    (s.charts || []).forEach((c) => {
+      chartCard(grid, c.title, c.sub || null, c.entries, { dim: c.title, ramp: !!c.ramp });
+    });
+  }
 }
 
 // ---------- alternadores das duas visões da aba Geral ----------

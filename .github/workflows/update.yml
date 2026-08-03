@@ -35,6 +35,15 @@ jobs:
         with:
           node-version: 20
 
+      # A última pesquisa válida sobrevive entre execuções pelo cache do Actions
+      # (e não pelo repositório, que é público).
+      - name: Restaurar última pesquisa válida
+        uses: actions/cache/restore@v4
+        with:
+          path: data/survey-cache.json
+          key: pesquisa-${{ github.run_id }}
+          restore-keys: pesquisa-
+
       - name: Buscar dados no Active Campaign
         run: node scripts/fetch-data.js
         env:
@@ -49,6 +58,14 @@ jobs:
           LEAD_NOVO_DESDE: ${{ secrets.LEAD_NOVO_DESDE }}
           PESQUISA_URL: ${{ secrets.PESQUISA_URL }}
           PESQUISA_TOKEN: ${{ secrets.PESQUISA_TOKEN }}
+
+      # Grava sempre: se a pesquisa falhou, mantém viva a foto restaurada
+      - name: Guardar pesquisa válida
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data/survey-cache.json
+          key: pesquisa-${{ github.run_id }}
 
       - name: Montar o dashboard
         run: node scripts/build.js
