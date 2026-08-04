@@ -2,11 +2,10 @@ name: Atualizar dashboard
 
 on:
   schedule:
-    # De 2 em 2 horas, das ~06h às ~20h de Brasília (UTC-3).
-    # O agendamento do GitHub é "melhor esforço" e costuma atrasar de 30 min a 1h+;
-    # rodar com frequência é o que mantém o dashboard recente, não o horário exato.
-    # Minuto 23 de propósito: o minuto 0 é o mais congestionado da plataforma.
-    - cron: '23 9-23/2 * * *'
+    # Captação encerrada em 03/08/2026: 1x ao dia, ~07h23 de Brasília (UTC-3).
+    # Minuto 23 de propósito: o minuto 0 é o mais congestionado da plataforma
+    # e o agendamento do GitHub, que é "melhor esforço", atrasa mais nele.
+    - cron: '23 10 * * *'
   workflow_dispatch: {}
   push:
     branches: [main]
